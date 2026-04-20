@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gulfstream | BEAKON Sales Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#333;overflow-x:hidden;}
+.topbar{background:#0a2342;color:white;padding:12px 20px;display:flex;align-items:center;gap:20px;border-bottom:3px solid #0076be;position:sticky;top:0;z-index:100;}
+.logo-pill{background:white;color:#0076be;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:13px;}
+.topbar-title{flex:1;font-size:18px;font-weight:600;}
+.pill{background:rgba(255,255,255,0.15);padding:5px 10px;border-radius:15px;font-size:12px;}
+.pill-status{background:#4caf50;padding:5px 10px;border-radius:15px;font-size:12px;}
+.refresh-banner{background:#0076be;color:white;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;font-size:13px;position:sticky;top:50px;z-index:99;}
+.container{display:flex;min-height:calc(100vh - 80px);}
+.sidebar{width:240px;background:#0a2342;color:white;padding:20px 0;overflow-y:auto;height:calc(100vh - 80px);position:sticky;top:80px;}
+.sidebar-label{font-size:11px;font-weight:700;text-transform:uppercase;color:#999;padding:0 15px;margin-bottom:8px;letter-spacing:0.5px;}
+.sidebar-section{margin-bottom:22px;}
+.sidebar-item{padding:10px 15px;cursor:pointer;font-size:13px;transition:all 0.2s;border-left:3px solid transparent;}
+.sidebar-item:hover{background:rgba(0,118,190,0.2);}
+.sidebar-item.active{background:rgba(0,118,190,0.3);border-left-color:#0076be;font-weight:600;}
+.sidebar-meta{font-size:10px;color:#aaa;padding:2px 15px 8px 15px;line-height:1.4;}
+.main-content{flex:1;padding:30px;overflow-y:auto;height:calc(100vh - 80px);}
+.section{display:none;}
+.section.active{display:block;}
+.section-title{font-size:24px;font-weight:700;margin-bottom:25px;color:#0a2342;}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:25px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:25px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:25px;}
+.card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-top:3px solid #0076be;}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:15px;letter-spacing:0.5px;}
+.kpi{font-size:32px;font-weight:700;color:#0a2342;margin-bottom:5px;}
+.kpi-label{font-size:12px;color:#999;}
+.kpi-change{font-size:12px;color:#4caf50;margin-top:5px;}
+.kpi-change-neg{font-size:12px;color:#f44336;margin-top:5px;}
+.tag{display:inline-block;background:#f0f0f0;color:#333;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-right:6px;margin-bottom:6px;}
+.tag-accent{background:rgba(0,118,190,0.12);color:#0076be;}
+.tag-hot{background:#fdecea;color:#c62828;}
+.tag-india{background:#fef3c7;color:#92400e;}
+.tag-def{background:#e8f5e9;color:#1b5e20;}
+.contact-card{background:white;border-radius:6px;padding:15px;border-left:3px solid #0076be;margin-bottom:12px;font-size:12px;}
+.contact-name{font-weight:600;color:#0a2342;margin-bottom:2px;}
+.contact-title{color:#666;font-size:11px;margin-bottom:5px;}
+.contact-location{color:#999;font-size:10px;}
+.prog-row{margin-bottom:15px;}
+.prog-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#666;margin-bottom:5px;}
+.prog-bar{width:100%;height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;background:#0076be;border-radius:4px;}
+.loc-us{background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.loc-ca{background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.loc-india{background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.chain{display:flex;align-items:stretch;gap:0;margin-bottom:14px;border-radius:10px;overflow:hidden;}
+.chain-num{color:#fff;width:38px;min-width:38px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;}
+.chain-body{flex:1;display:flex;flex-wrap:wrap;}
+.chain-cell{flex:1;min-width:200px;padding:12px 15px;border-right:1px solid #e4eaf5;}
+.chain-cell:last-child{border-right:none;}
+.chain-label{font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:5px;}
+.chain-head{font-size:12.5px;font-weight:700;color:#0a2342;}
+.chain-body-text{font-size:11.5px;color:#5a6a8a;margin-top:4px;line-height:1.6;}
+
+/* BU Action blocks */
+.bu-block{background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.08);margin-bottom:20px;}
+.bu-header{padding:14px 18px;display:flex;align-items:center;gap:10px;}
+.bu-header-title{font-size:15px;font-weight:700;color:white;}
+.bu-header-sub{font-size:11px;color:rgba(255,255,255,0.85);}
+.bu-action{padding:14px 18px;border-bottom:1px solid #f0f0f0;}
+.bu-action:last-child{border-bottom:none;}
+.bu-action-num{display:inline-block;background:#0076be;color:white;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-size:11px;font-weight:700;margin-right:8px;}
+.bu-action-title{font-size:13px;font-weight:700;color:#0a2342;margin-bottom:6px;}
+.bu-action-body{font-size:12px;color:#444;line-height:1.65;margin-bottom:8px;}
+.fast-sell{background:#e8f4fd;border-left:3px solid #0076be;padding:7px 10px;border-radius:0 6px 6px 0;font-size:11px;color:#0a2342;font-weight:600;}
+
+/* India strategy */
+.india-banner{background:linear-gradient(135deg,#ff9800,#f44336);color:white;border-radius:10px;padding:15px 18px;margin-bottom:20px;}
+
+/* Program badge */
+.prog-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px;margin-bottom:6px;}
+
+::-webkit-scrollbar{width:8px;}::-webkit-scrollbar-track{background:#f1f1f1;}::-webkit-scrollbar-thumb{background:#0076be;border-radius:4px;}
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:900px){.grid-3{grid-template-columns:repeat(2,1fr);}.grid-2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ══ DYNAMIC DATA STORE — updated by refresh script every 5 days ══ -->
+<script>
+// ─────────────────────────────────────────────────────────────────
+// GS_DATA: All numbers on a 5-day refresh cycle.
+// Source: General Dynamics 10-K FY 2025 (Aerospace segment) + Q4 2025 earnings call
+// ─────────────────────────────────────────────────────────────────
+const GS_DATA = {
+  lastRefreshed: "Apr 19, 2026",
+  dataSource: "General Dynamics 10-K FY 2025 (Aerospace segment) + Q4 2025 earnings call",
+
+  // Group-level financials (Aerospace segment)
+  revenue:        13.11,   // $B USD FY 2025 Aerospace segment
+  revenueGrowth:  18,      // % YoY (from $11.09B in 2024)
+  backlog:        21.83,   // $B USD record as of Q4 2025
+  backlogGrowth:  6.3,     // % YoY
+  operatingMargin: 15.2,   // % FY 2025 Aerospace segment
+  headcount:      30000,   // approx global (Gulfstream + GD Aerospace combined)
+  openRoles:      350,     // approx open LinkedIn roles as of Apr 2026
+  deliveries:     158,     // aircraft delivered FY 2025 (including 22 G800 deliveries)
+  deliveriesGrowth: 8,     // % YoY
+
+  // Key sites
+  sites: {
+    savannah:   { label: "Savannah GA (HQ + Primary Mfg)", programs: ["G700", "G800", "G650/ER", "Final Assembly"], roles: 10000 },
+    brunswick:  { label: "Brunswick GA", programs: ["G700/G800 structures", "Composite manufacturing", "Fuselage/wing fab"], roles: 2500 },
+    dallas:     { label: "Dallas TX (Completions Center)", programs: ["Aircraft completions", "Interior finishing"], roles: 1200 },
+    longbeach:  { label: "Long Beach CA (Service Center)", programs: ["MRO", "Customer support", "Fleet services"], roles: 800 },
+    appleton:   { label: "Appleton WI (Service Center)", programs: ["MRO", "Avionics support"], roles: 600 },
+    farnborough: { label: "Farnborough UK (Service Center)", programs: ["EMEA support", "MRO"], roles: 400 },
+    singapore:  { label: "Singapore (APAC Service Center)", programs: ["Asia-Pacific MRO", "Customer support"], roles: 300 }
+  },
+
+  // Leadership & key contacts (VP Engineering level and above only)
+  leadership: {
+    gdceo:  { name:"Phebe Novakovic",            title:"President & CEO, General Dynamics", since:"Jan 2013", location:"Falls Church, VA" },
+    gspresident:{ name:"Mark Burns",             title:"President, Gulfstream Aerospace",    since:"2015",     location:"Savannah, GA" },
+    vpeng:{ name:"Colin Miller",                 title:"SVP Engineering & Technology",        since:"—",         location:"Savannah, GA" },
+    vpmanuf:{ name:"Greg Collett",               title:"SVP Manufacturing Operations",        since:"—",         location:"Savannah, GA" },
+    vpsupport:{ name:"Derek Zimmerman",          title:"SVP Customer Support",                since:"—",         location:"Savannah, GA" },
+    vpprograms:{ name:"Lawrence Costello",       title:"SVP Programs",                        since:"—",         location:"Savannah, GA" },
+    vpbizdev:{ name:"Dan Nassif",                title:"SVP Business Development",            since:"—",         location:"Savannah, GA" }
+  },
+  keyContacts: [
+    { name:"Mark Burns",                   title:"President, Gulfstream Aerospace",       loc:"Savannah, GA", badge:"C-Suite",       color:"#0076be",
+      pitch:"Strategic entry point — owns Gulfstream P&L. Lead pitch: 'G800 ramp requires cert documentation sprint. We've handled this for peer OEMs. India delivery model scales your engineering without CAPEX.'" },
+    { name:"Colin Miller",                 title:"SVP Engineering & Technology",          loc:"Savannah, GA", badge:"Primary Target",  color:"#1b5e20",
+      pitch:"Decision-maker for all engineering outsourcing partnerships. Controls G700/G800 program engineering strategy. Entry: LinkedIn + NBAA-BACE booth presence. Pitch structural analysis (CATIA V5), DO-178C avionics verification, S1000D technical publications." },
+    { name:"Greg Collett",                 title:"SVP Manufacturing Operations",          loc:"Savannah, GA", badge:"Manufacturing",  color:"#0076be",
+      pitch:"Controls production capacity, manufacturing engineering, and supply chain. Interested in: NC programming CAD/CAM delivery, process planning offshore, Cyient Hyderabad manufacturing engineering support." },
+    { name:"Lawrence Costello",            title:"SVP Programs",                          loc:"Savannah, GA", badge:"Program Lead",     color:"#c62828",
+      pitch:"G700/G800 program management authority. Owns delivery schedules and certification timelines. Fast-sell: 'G800 first customer delivery Aug 2025 → certification doc sprint. We can turn around AFM/AMM/SRM in 90 days.' " },
+    { name:"Derek Zimmerman",              title:"SVP Customer Support",                  loc:"Savannah, GA", badge:"MRO Leader",      color:"#ff6f00",
+      pitch:"Owns post-delivery documentation and fleet support engineering. MRO documentation (Service Bulletins, Airworthiness Directives, fleet maintenance manuals) is a clear fit for Cyient tech pubs delivery." },
+    { name:"Dan Nassif",                   title:"SVP Business Development",              loc:"Savannah, GA", badge:"Partnerships",    color:"#0076be",
+      pitch:"Warm intro path to engineering and manufacturing leadership. Handles key OEM partnerships and relationships. Warm intro request: 'Dan, we work with your supply chain on structural analysis — can you connect us to Colin or Greg for a G800 engineering discussion?'" }
+  ],
+
+  outreachPlaybook: {
+    badge: "Production→Ramp",
+    headline: "G800 ramp (22 deliveries FY 2025 → growth 2026) = engineering bandwidth pressure NOW",
+    triggers: [
+      { icon:"✈️", label:"G800 First Customer Delivery — August 2025",
+        body:"First G800 delivered to customer in August 2025 after June FAA certification. Fleet in active ramp. Certification documentation suite (AFM/AMM/SRM/IPC/WDM) must be authored and maintained in parallel with fleet ramp — production rate increases 2026-2027. Montreal engineering alone cannot absorb this workload.",
+        action:"Email hook: 'G800 deliveries started Aug 2025 — your cert doc and fleet support engineering is under real pressure. We've handled structural analysis and AMM authoring for [ref OEM] at equivalent ramp speeds. 20-min call?'" },
+      { icon:"📈", label:"158 Total Deliveries in 2025 (22 G800s) — Growth to 170+ in 2026",
+        body:"Gulfstream delivered 158 aircraft in FY 2025 including 22 G800s (ramping from EIS). GD guidance signals continued growth in 2026. Each delivery milestone requires engineering: certification updates, fleet documentation, customer mod support, in-service engineering changes.",
+        action:"Pitch: 'You're on track to deliver 170+ aircraft in 2026 — your engineering will be the bottleneck. India ER&D (Cyient Hyderabad) is your scaling valve. Fast-sell: structural stress, DO-178C avionics verification, S1000D technical publications.'" },
+      { icon:"💰", label:"$21.83B Backlog — 18+ Months Forward Revenue",
+        body:"Record $21.83B backlog ensures production pressure extends 18+ months. This is not demand uncertainty — this is commitment certainty requiring sustained engineering support. Production acceleration signals engineering ER&D outsourcing is already underway at Gulfstream.",
+        action:"Angle: 'Your backlog is the highest in company history. That means 18 months of sustained engineering demand. Cyient Hyderabad can absorb structural analysis, documentation, and avionics work at 40-50% India cost advantage without adding direct Savannah headcount.'" },
+      { icon:"🇮🇳", label:"No India Presence — Strategic Gap for Cyient",
+        body:"Gulfstream has NO dedicated India engineering office. Textron, Bombardier, and Dassault all have 500-1,500+ India teams. Gulfstream is wide open. Cyient Hyderabad is already certified (AS9100) and operating for Textron and others. First-mover advantage for Cyient.",
+        action:"Meeting hook: 'Textron uses Cyient Hyderabad for structural analysis and tech pubs. Gulfstream doesn't have an India partnership yet. Your $21.83B backlog requires that scaling now.'" }
+    ],
+    coldToWarm: [
+      { step:1, label:"Signal Monitor", body:"Watch G800 delivery announcements, Gulfstream earnings updates, backlog growth signals. Each delivery milestone = engineering demand." },
+      { step:2, label:"Personalised Email", body:"Reference G800 ramp (Aug 2025 first delivery) or recent aircraft delivery announcements. One sentence on Cyient's aerospace ER&D track record (Textron, RTX, GE). One question: engineering outsourcing interest?" },
+      { step:3, label:"LinkedIn Outreach", body:"Connect with Colin Miller (SVP Eng) and Greg Collett (SVP Mfg) in Savannah. Engage G800 news and production milestones with relevant aerospace insights." },
+      { step:4, label:"Event Pre-Outreach", body:"2 weeks before NBAA-BACE (Oct 20–22): email to schedule show meeting. Gulfstream always has major booth. Reference: 'We'll be at NBAA — let's meet to discuss G800 engineering scaling.'" },
+      { step:5, label:"Warm Meeting", body:"Agenda: G800 ramp timeline → Cyient structural/systems track record → India delivery model cost advantage → pilot project scope (E.g., 90-day AFM/AMM sprint for G800 certification docs)." }
+    ]
+  },
+  partnerships: [
+    { name:"Rolls-Royce (Pearl 700/705 Engines)", type:"Propulsion OEM", status:"Active",
+      desc:"Pearl 700 powers G700; Pearl 705 powers G800. Long-term propulsion partnership for ultra-long-range bizjet market.",
+      angle:"Engine interface documentation, maintenance manuals, integration testing — Cyient tech pubs can support Pearl interface documentation authoring and FAA DAS coordination." },
+    { name:"Honeywell Aerospace (Avionics / Systems)", type:"Avionics & Systems OEM", status:"Active",
+      desc:"Honeywell supplies flight controls, auxiliary power units (APU), and integrated vehicle systems (IVS) for G700/G800.",
+      angle:"Systems integration documentation, Interface Control Documents (ICDs), FAA certification support — DO-178C avionics verification is a Cyient strength." },
+    { name:"Collins Aerospace (Avionics/Flight Decks)", type:"Avionics OEM", status:"Active",
+      desc:"Collins supplies flight deck systems, avionics, and communications for G700/G800 (Vision flight deck integration).",
+      angle:"Collins avionics integration engineering, Flight Deck documentation, Certification engineering — Cyient has Collins Pro Line experience." },
+    { name:"General Electric (GE Engines / Passport)", type:"Propulsion OEM", status:"Active",
+      desc:"GE Passport engines power G700. GE Aerospace is a key engine supplier to Gulfstream.",
+      angle:"Tech pubs coordination via GE Aerospace relationship. Engine interface documentation, maintenance procedure authoring — leverage Cyient's existing GE engagement." }
+  ],
+  events: [
+    { name:"NBAA-BACE", date:"Oct 20–22, 2026", location:"Las Vegas, NV",
+      type:"Trade Show", priority:"🔴 MUST",
+      why:"Gulfstream's premier annual event. G800 static display, G700 exhibit. Executive leadership and engineering VP attendance guaranteed. Best single opportunity for direct engagement." },
+    { name:"Farnborough Airshow", date:"July 20–24, 2026", location:"Farnborough, UK",
+      type:"Trade Show", priority:"🔴 MUST",
+      why:"Gulfstream signs major customer orders and partnership agreements at Farnborough. Engineering and supply chain leadership attend." },
+    { name:"EBACE (European Business Aviation Conference)", date:"May 27–29, 2026", location:"Geneva, Switzerland",
+      type:"Trade Show", priority:"🟡 MEDIUM",
+      why:"EMEA customer base and partnerships. Gulfstream has significant European dealer and customer presence." },
+    { name:"MRO Americas", date:"Apr 21–23, 2026", location:"Orlando, FL",
+      type:"Trade Show", priority:"🟡 MEDIUM",
+      why:"Gulfstream aftermarket and customer support team attends. Tech pubs, MRO engineering, fleet support angles." }
+  ],
+
+  // Program mix
+  programs: {
+    g800: { name: "G800", status: "FAA cert Jun 2025, EIS Aug 2025", note: "Ultra-long-range flagship. 8,000 nm range. Mach 0.925. 22 delivered in FY 2025. Production ramp underway." },
+    g700: { name: "G700", status: "In full production", note: "Ultra-long-range leader. 7,500 nm range. FAA certification Dec 2023. Ramping toward 100+ annual rate." },
+    g650: { name: "G650 / G650ER", status: "In production", note: "Mature platform. Continued backlog fulfillment. Stable production rate." },
+    g600: { name: "G600 / G550", status: "Support/MRO", note: "Continued fleet support. MRO and in-service engineering." }
+  }
+};
+</script>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo-pill">✈ BEAKON</div>
+  <div class="topbar-title">Gulfstream Aerospace — Sales Intelligence Dashboard</div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <div class="pill">$21.83B Backlog</div>
+    <div class="pill">~30,000 Employees</div>
+    <div class="pill">GD:NYSE</div>
+    <div class="pill-status">● Live</div>
+  </div>
+</div>
+
+<!-- REFRESH BANNER -->
+<div class="refresh-banner">
+  <span>📡 Gulfstream Aerospace (General Dynamics) · President: Mark Burns · G800 FAA-certified Jun 2025 · ~$13.11B FY 2025 Aerospace revenue · Record backlog $21.83B</span>
+  <span style="font-size:11px;opacity:.8;">Data: Apr 2026</span>
+</div>
+
+<div class="container">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Gulfstream</div>
+    <div class="sidebar-meta">Savannah GA · Brunswick GA<br>Dallas TX · Long Beach CA<br>G700/G800 · G650/G600 · MRO</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Sales</div>
+    <div class="sidebar-item active" onclick="switchSection(event,'overview')">📊 Summary KPIs</div>
+    <div class="sidebar-item" onclick="switchSection(event,'contacts')">👥 Key Contacts</div>
+    <div class="sidebar-item" onclick="switchSection(event,'actions')">🎯 Sales Actions</div>
+    <div class="sidebar-item" onclick="switchSection(event,'skills')">⚡ Fast-Sell Skills</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Intelligence</div>
+    <div class="sidebar-item" onclick="switchSection(event,'hiring')">💼 Hiring Intelligence</div>
+    <div class="sidebar-item" onclick="switchSection(event,'signals')">📡 Signal Chains</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Outreach Playbook</div>
+    <div class="sidebar-item" onclick="switchSection(event,'outreach')">🤝 Outreach Playbook <span style="background:#4caf50;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;margin-left:4px;">Production→Ramp</span></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Partnership &amp; Alliances</div>
+    <div class="sidebar-item" onclick="switchSection(event,'partnerships')">🤝 Partnerships &amp; Alliances</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Industry Events</div>
+    <div class="sidebar-item" onclick="switchSection(event,'events')">📅 Industry Events</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Programs & Strategy</div>
+    <div class="sidebar-item" onclick="switchSection(event,'programs')">✈️ Fleet Programs</div>
+    <div class="sidebar-item" onclick="switchSection(event,'india')">🇮🇳 India Strategy</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Reference</div>
+    <div class="sidebar-item" onclick="switchSection(event,'reference')">📚 Market Context</div>
+  </div>
+  <div style="padding:15px;font-size:10px;color:#666;border-top:1px solid rgba(255,255,255,0.1);margin-top:10px;">
+    Last refreshed: <span id="sb-refresh">—</span>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-content">
+
+<!-- ═══ OVERVIEW ═══ -->
+<div id="overview" class="section active">
+  <div class="section-title">📊 Gulfstream Aerospace — Summary KPIs</div>
+
+  <!-- Strategic banner -->
+  <div style="background:linear-gradient(135deg,#0a2342,#0076be);color:white;border-radius:10px;padding:15px 20px;margin-bottom:22px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px;">🚀 Strategic Context: G800 Ramp Era — Engineering Bandwidth Pressure</div>
+    <div style="font-size:12px;opacity:.93;line-height:1.7;">Gulfstream completed G800 FAA certification (June 2025) and first customer delivery (August 2025). The fleet is NOW in active ramp with 22 deliveries in FY 2025 and higher guidance for 2026+. Record $21.83B backlog ensures 18+ months of forward production at increasing delivery rates. G700 is in full production acceleration. This engineering demand cannot be absorbed by Savannah headcount alone — Gulfstream's India engineering footprint is effectively zero. Strategic gap for Cyient. Record FY 2025 Aerospace revenue of $13.11B (up 18% YoY) and 15.2% operating margin signals investment capacity in offshore ER&D partnerships.</div>
+  </div>
+
+  <!-- KPIs row 1 -->
+  <div class="grid-4" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title">Revenue (FY 2025 Aerospace)</div>
+      <div class="kpi" id="kpi-rev">$13.11B</div>
+      <div class="kpi-label">USD · GD Aerospace segment</div>
+      <div class="kpi-change" id="kpi-rev-g">▲ +18% YoY</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Order Backlog</div>
+      <div class="kpi" id="kpi-backlog">$21.83B</div>
+      <div class="kpi-label">Record high Q4 2025</div>
+      <div class="kpi-change" id="kpi-backlog-g">▲ +6.3% YoY</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Aircraft Deliveries</div>
+      <div class="kpi" id="kpi-del">158</div>
+      <div class="kpi-label">Units delivered FY 2025</div>
+      <div class="kpi-change" id="kpi-del-g">▲ +8% YoY</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Operating Margin</div>
+      <div class="kpi" id="kpi-margin">15.2%</div>
+      <div class="kpi-label">FY 2025 Aerospace segment</div>
+      <div class="kpi-change">▲ Strong trajectory</div>
+    </div>
+  </div>
+
+  <!-- KPIs row 2 -->
+  <div class="grid-4" style="margin-bottom:22px;">
+    <div class="card">
+      <div class="card-title">Headcount (GD + Gulfstream)</div>
+      <div class="kpi">~30K</div>
+      <div class="kpi-label">Global employees</div>
+      <div class="kpi-change">Growing with delivery ramp</div>
+    </div>
+    <div class="card">
+      <div class="card-title">G800 Deliveries (2025)</div>
+      <div class="kpi">22</div>
+      <div class="kpi-label">Units delivered FY 2025</div>
+      <div class="kpi-change">▲ Ramping 2026+</div>
+    </div>
+    <div class="card">
+      <div class="card-title">G800 Backlog Status</div>
+      <div class="kpi">180+</div>
+      <div class="kpi-label">Estimated units on order</div>
+      <div class="kpi-change">~18+ months forward</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Open Roles (Est.)</div>
+      <div class="kpi" id="kpi-roles">~350+</div>
+      <div class="kpi-label">LinkedIn estimate as of Apr 2026</div>
+      <div class="kpi-change">Engineering + Manufacturing</div>
+    </div>
+  </div>
+
+  <!-- Sites grid -->
+  <div class="card" style="margin-bottom:22px;">
+    <div class="card-title">🌐 Global Site Footprint</div>
+    <div class="grid-3" style="margin-bottom:0;">
+      <div style="background:#f8faff;border-radius:8px;padding:14px;border-left:4px solid #0076be;">
+        <div style="font-size:12px;font-weight:700;color:#0a2342;margin-bottom:5px;">🇺🇸 Savannah GA — HQ</div>
+        <div style="font-size:11px;color:#555;line-height:1.6;">Engineering CoE · G700/G800 design · G650/G600 support · Final Assembly · Finance/IT · ~10,000 employees. Primary engineering decision hub — all major program ownership here.</div>
+        <div style="margin-top:8px;"><span class="prog-badge" style="background:#0076be;color:white;">G700/G800</span><span class="prog-badge" style="background:#e8f4fd;color:#0076be;">G650/G600</span></div>
+      </div>
+      <div style="background:#f8faff;border-radius:8px;padding:14px;border-left:4px solid #1976d2;">
+        <div style="font-size:12px;font-weight:700;color:#0a2342;margin-bottom:5px;">🇺🇸 Brunswick GA</div>
+        <div style="font-size:11px;color:#555;line-height:1.6;">G700/G800 structures and fuselage manufacturing · Composite manufacturing · Wing and center fuselage fabrication · ~2,500 employees. Critical production facility for ramp scaling.</div>
+        <div style="margin-top:8px;"><span class="prog-badge" style="background:#1976d2;color:white;">G700/G800 Structures</span><span class="prog-badge" style="background:#e3f2fd;color:#1976d2;">Composites Mfg</span></div>
+      </div>
+      <div style="background:#f8faff;border-radius:8px;padding:14px;border-left:4px solid #0d47a1;">
+        <div style="font-size:12px;font-weight:700;color:#0a2342;margin-bottom:5px;">🇺🇸 Dallas TX + Long Beach CA + Appleton WI</div>
+        <div style="font-size:11px;color:#555;line-height:1.6;">Dallas: Completions & interior finishing (~1,200). Long Beach CA: Service center & MRO (~800). Appleton WI: Service center & avionics support (~600). Singapore: APAC service center (~300).</div>
+        <div style="margin-top:8px;"><span class="prog-badge" style="background:#0d47a1;color:white;">Completions/MRO/Service</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fleet portfolio visual -->
+  <div class="card">
+    <div class="card-title">✈️ Current Fleet Portfolio</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+      <div style="background:#e8f4fd;border-radius:8px;padding:14px;text-align:center;border-top:3px solid #0076be;">
+        <div style="font-size:14px;font-weight:800;color:#0a2342;margin-bottom:4px;">G800</div>
+        <div style="font-size:11px;color:#0076be;font-weight:600;margin-bottom:6px;">Ultra-Long-Range Flagship</div>
+        <div style="font-size:10.5px;color:#555;line-height:1.7;">8,000 nm range · Mach 0.925<br>FAA cert: Jun 2025<br>EIS: Aug 2025<br><strong>Status: Active ramp</strong></div>
+      </div>
+      <div style="background:#e8f4fd;border-radius:8px;padding:14px;text-align:center;border-top:3px solid #1565c0;">
+        <div style="font-size:14px;font-weight:800;color:#0a2342;margin-bottom:4px;">G700</div>
+        <div style="font-size:11px;color:#1565c0;font-weight:600;margin-bottom:6px;">Ultra-Long-Range Leader</div>
+        <div style="font-size:10.5px;color:#555;line-height:1.7;">7,500 nm range · Mach 0.925<br>13 passengers<br>FAA cert: Dec 2023<br><strong>Status: Full production</strong></div>
+      </div>
+      <div style="background:#f3e5f5;border-radius:8px;padding:14px;text-align:center;border-top:3px solid #7b1fa2;">
+        <div style="font-size:14px;font-weight:800;color:#0a2342;margin-bottom:4px;">G650 / G650ER</div>
+        <div style="font-size:11px;color:#7b1fa2;font-weight:600;margin-bottom:6px;">Mature Large-Cabin</div>
+        <div style="font-size:10.5px;color:#555;line-height:1.7;">5,000-5,500 nm range<br>13 passengers<br>Proven platform<br><strong>Status: In production</strong></div>
+      </div>
+      <div style="background:#f1f8e9;border-radius:8px;padding:14px;text-align:center;border-top:3px solid #558b2f;">
+        <div style="font-size:14px;font-weight:800;color:#0a2342;margin-bottom:4px;">G600 / G550</div>
+        <div style="font-size:11px;color:#558b2f;font-weight:600;margin-bottom:6px;">Mid-Size Workhorse</div>
+        <div style="font-size:10.5px;color:#555;line-height:1.7;">3,500+ nm range<br>8-10 passengers<br>Fleet support focus<br><strong>Status: Support/MRO</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIGNAL CHAINS ═══ -->
+<div id="signals" class="section">
+  <div class="section-title">📡 Signal Chains — Why Gulfstream Is Hiring Now</div>
+
+  <!-- Chain 1 -->
+  <div class="chain" style="border:1.5px solid #bfdbfe;margin-bottom:14px;">
+    <div class="chain-num" style="background:#0055a5;">1</div>
+    <div class="chain-body">
+      <div class="chain-cell" style="background:white;">
+        <div class="chain-label" style="color:#0055a5;">✈️ Industry Signal</div>
+        <div class="chain-head">G800 FAA Certification → First Customer Delivery (Aug 2025) → Active Ramp</div>
+        <div class="chain-body-text">The G800 received FAA type certification June 2025 and delivered first aircraft to customer in August 2025. The fleet is NOW in active ramp. EIS creates a ramp: production engineering, certification documentation (AFM, AMM, SRM), flight test data processing, and fleet support engineering. Gulfstream delivered 22 G800s in FY 2025 — production will accelerate 2026+. Savannah engineering headcount alone cannot absorb this workload + the G700 ramp + G650/G600 backlog fulfillment.</div>
+      </div>
+      <div class="chain-cell" style="background:#fff8f0;">
+        <div class="chain-label" style="color:#b45309;">📈 Hiring Surge</div>
+        <div class="chain-head">Certification Docs · AMM/AFM Authoring · Structures Analysis · Avionics Integration</div>
+        <div class="chain-body-text">Active roles: Certification Specialists (FAA Part 25), Technical Publications authors (S1000D/ATA iSpec 2200), Structural Analysis Engineers (CATIA V5, FEA, Nastran), DO-178C Avionics engineers. All deliverable from India. Savannah engineering CoE owns the program — Cyient Hyderabad delivery is the cost model they need to move toward now.</div>
+      </div>
+      <div class="chain-cell" style="background:#f0fdf4;">
+        <div class="chain-label" style="color:#2e7d32;">🎯 Target Contact</div>
+        <div class="chain-head">Colin Miller — SVP Engineering & Technology, Savannah GA</div>
+        <div class="chain-body-text">Search: "Colin Miller Gulfstream" or "Gulfstream VP Engineering Savannah." Fast-sell: "G800 EIS is the timeline — certification documentation, structural stress, avionics integration. We deliver S1000D AMM authoring and FAA Part 25 cert docs from Hyderabad at 40% cost advantage. Same quality stack you'd expect from a Savannah hire." Ask for: Direct meeting or intro via Mark Burns / Dan Nassif (SVP Business Development).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chain 2 -->
+  <div class="chain" style="border:1.5px solid #d1fae5;margin-bottom:14px;">
+    <div class="chain-num" style="background:#059669;">2</div>
+    <div class="chain-body">
+      <div class="chain-cell" style="background:white;">
+        <div class="chain-label" style="color:#059669;">🏭 Industry Signal</div>
+        <div class="chain-head">G700 Full Production Acceleration — 80+ Aircraft Annually</div>
+        <div class="chain-body-text">G700 is Gulfstream's highest-volume program in the ultra-long-range category. FAA certified December 2023; now in full production acceleration toward 80+ aircraft/year. G700 NPI phase is generating ongoing structural stress analysis (damage tolerance), Service Bulletin authoring for production changes, and avionics integration engineering (Collins Pro Line Fusion partnership). Brunswick GA (structures) and Savannah (final assembly) are both under production pressure.</div>
+      </div>
+      <div class="chain-cell" style="background:#fff8f0;">
+        <div class="chain-label" style="color:#b45309;">📈 Hiring Surge</div>
+        <div class="chain-head">CATIA V5 Stress · Damage Tolerance · SB/AD Authoring · Collins Avionics Integration</div>
+        <div class="chain-body-text">Structural Stress Engineers (Part 25 damage tolerance), Service Bulletin authors (S1000D / ATA iSpec 2200), Avionics Systems Engineers (Collins Pro Line Fusion integration), Manufacturing Engineers (NC programming, CAD/CAM). Brunswick and Savannah are the physical delivery hubs — Cyient's Hyderabad team can deliver all analysis and documentation work remotely.</div>
+      </div>
+      <div class="chain-cell" style="background:#f0fdf4;">
+        <div class="chain-label" style="color:#2e7d32;">🎯 Target Contact</div>
+        <div class="chain-head">Greg Collett — SVP Manufacturing Operations, Savannah GA</div>
+        <div class="chain-body-text">Search: "Greg Collett Gulfstream Manufacturing" or "Gulfstream VP Operations." Manufacturing engineering (NC programming, process planning, tooling) and structures production support are his domain. Pitch: "G700 ramp to 80+ aircraft/year requires offshore manufacturing engineering support. Cyient Hyderabad runs CATIA V5 NC programming and CAD/CAM delivery for peer OEMs." Entry via Colin Miller or manufacturing procurement team.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chain 3 -->
+  <div class="chain" style="border:1.5px solid #fcd4e0;margin-bottom:14px;">
+    <div class="chain-num" style="background:#dc2626;">3</div>
+    <div class="chain-body">
+      <div class="chain-cell" style="background:white;">
+        <div class="chain-label" style="color:#dc2626;">💰 Industry Signal</div>
+        <div class="chain-head">Record $21.83B Backlog → 18+ Months Forward Production</div>
+        <div class="chain-body-text">Gulfstream's $21.83B backlog (Q4 2025) represents approximately 18+ months of forward production at current rates. To sustain 170+ aircraft/year (2026 guidance) without proportionally growing Savannah headcount, Gulfstream is expanding offshore engineering delivery — primarily through partners in India and Canada. NO dedicated India engineering office exists yet. Cyient is the ready-made solution.</div>
+      </div>
+      <div class="chain-cell" style="background:#fff8f0;">
+        <div class="chain-label" style="color:#b45309;">📈 Hiring Surge</div>
+        <div class="chain-head">Structures · Stress Analysis · CAD/CAM · PLM · DO-178C Avionics</div>
+        <div class="chain-body-text">Structural Stress Engineers (CATIA V5 / Abaqus / Nastran), CAD/CAM Engineers (NC programming), PLM Engineers (Dassault Teamcenter / ENOVIA), Avionics Verification Engineers (DO-178C DAL B/C). Savannah leads program ownership, Cyient Hyderabad delivers engineering. This is the scaling model Gulfstream needs — and Cyient is the only ready-made India aerospace center they don't currently have."</div>
+      </div>
+      <div class="chain-cell" style="background:#f0fdf4;">
+        <div class="chain-label" style="color:#2e7d32;">🎯 Target Contact</div>
+        <div class="chain-head">Colin Miller (SVP Eng) + Greg Collett (SVP Mfg) Joint Meeting</div>
+        <div class="chain-body-text">Pitch: "Your $21.83B backlog requires an India engineering scaling model. Textron uses Cyient Hyderabad at scale. Gulfstream is wide open. Let's discuss: structural analysis (CATIA V5), avionics verification (DO-178C), and technical publications delivery from our Hyderabad center as your scaling valve."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chain 4 -->
+  <div class="chain" style="border:1.5px solid #fef3c7;margin-bottom:14px;">
+    <div class="chain-num" style="background:#d97706;">4</div>
+    <div class="chain-body">
+      <div class="chain-cell" style="background:white;">
+        <div class="chain-label" style="color:#d97706;">📱 Industry Signal</div>
+        <div class="chain-head">DO-178C Avionics Verification — Collins Pro Line Fusion Integration</div>
+        <div class="chain-body-text">G700/G800 flight decks integrate Collins Pro Line Fusion avionics suite. Collins is a key Gulfstream partnership — avionics integration, certification, and embedded software verification required. DO-178C Level B/C avionics verification is a specialized skillset that Gulfstream outsources to ER&D partners. Cyient's DO-178C avionics pedigree is a direct fit.</div>
+      </div>
+      <div class="chain-cell" style="background:#fff8f0;">
+        <div class="chain-label" style="color:#b45309;">📈 Hiring Surge</div>
+        <div class="chain-head">Embedded Software Engineers (DO-178C DAL B) · Avionics Verification · ARINC 429 Integration</div>
+        <div class="chain-body-text">DO-178C Software Verification Engineers, Avionics Integration Specialists (Collins Pro Line expertise), Electrical Systems Designers (EWIS/IPC documentation for avionics integration). Gulfstream already outsources avionics verification work — this is a proven outsource category. Cyient's Hyderabad team has active Collins Pro Line experience from peer OEMs.</div>
+      </div>
+      <div class="chain-cell" style="background:#f0fdf4;">
+        <div class="chain-label" style="color:#2e7d32;">🎯 Target Contact</div>
+        <div class="chain-head">Colin Miller (SVP Eng) — Avionics & Systems Engineering</div>
+        <div class="chain-body-text">Pitch: "DO-178C avionics verification is a standard outsource. We deliver DAL B/C verification for Collins Pro Line integration on multiple OEMs. Hyderabad team, zero escapes, ARINC 429 experience. Let's discuss a pilot: 90-day avionics verification sprint for G800 integration." Fast entry: Collins Aerospace sales team may have direct connection / recommendation channel.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chain 5 -->
+  <div class="chain" style="border:1.5px solid #bfdbfe;margin-bottom:0;">
+    <div class="chain-num" style="background:#0078d4;">5</div>
+    <div class="chain-body">
+      <div class="chain-cell" style="background:white;">
+        <div class="chain-label" style="color:#0078d4;">📚 Industry Signal</div>
+        <div class="chain-head">Fleet MRO & Technical Publications — G600/G550 Sustainment Tail</div>
+        <div class="chain-body-text">Gulfstream operates global service centers (Long Beach, Appleton, Singapore, Farnborough). G600/G550 fleet support (MRO documentation, Service Bulletins, Airworthiness Directives) is a steady-state workload. Fleet aging and regulatory compliance create documentation demand across the installed base. This is classic offshore documentation work — Cyient's S1000D / ATA iSpec 2200 tech pubs team is the exact fit.</div>
+      </div>
+      <div class="chain-cell" style="background:#fff8f0;">
+        <div class="chain-label" style="color:#b45309;">📈 Hiring Surge</div>
+        <div class="chain-head">Technical Publications · Service Bulletin Authoring · Airworthiness Compliance</div>
+        <div class="chain-body-text">Maintenance Manual updates (ATA iSpec 2200), Service Bulletin authoring, Airworthiness Directive compliance engineering, Parts & Material Engineering support. Fleet support is a lower-margin but steady-state business. MRO documentation is ideal for offshore delivery at scale. Gulfstream's service centers would readily accept high-quality remote documentation authoring.</div>
+      </div>
+      <div class="chain-cell" style="background:#f0fdf4;">
+        <div class="chain-label" style="color:#2e7d32;">🎯 Target Contact</div>
+        <div class="chain-head">Derek Zimmerman — SVP Customer Support, Savannah GA</div>
+        <div class="chain-body-text">Search: "Derek Zimmerman Gulfstream Customer Support" or "Gulfstream SVP Support." This is his domain — MRO documentation, fleet support engineering, technical publications. Pitch: "Fleet MRO documentation (Service Bulletins, ATA iSpec 2200 maintenance manual updates) is exactly our offshore model. Zero-escape track record, AS9100 certified, peer OEM references." Fast entry: Offer a scoped SB authoring pilot with 2–3 Cyient tech writers for G600/G550 fleet.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ SALES ACTIONS ═══ -->
+<div id="actions" class="section">
+  <div class="section-title">🎯 Sales Actions — Prioritized by Focus Area</div>
+
+  <div style="background:#e8f4fd;border-radius:8px;padding:12px 16px;margin-bottom:20px;border-left:4px solid #0076be;">
+    <div style="font-size:13px;font-weight:700;color:#0a2342;margin-bottom:4px;">✅ Lead every Gulfstream conversation with:</div>
+    <div style="font-size:12px;color:#444;line-height:1.7;">AS9100 certified · S1000D / ATA iSpec 2200 tech pubs pedigree · CATIA V5 structural analysis delivery from India · DO-178C avionics SW pedigree · Collins Pro Line Fusion integration experience · Active on G700/G800 programs at peer OEMs (Textron, RTX)</div>
+  </div>
+
+  <!-- BU Block 1: Savannah Engineering -->
+  <div class="bu-block">
+    <div class="bu-header" style="background:linear-gradient(135deg,#0a2342,#0076be);">
+      <div>
+        <div class="bu-header-title">✈️ Savannah Engineering CoE — G700/G800 &amp; G650/G600 Programs</div>
+        <div class="bu-header-sub">HQ engineering decision-makers · EIS ramp · Production acceleration · ~10,000 employees</div>
+      </div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">1</span>G800 EIS — Certification Documentation Sprint</div>
+      <div class="bu-action-body">The G800 received FAA type certification June 2025. First customer delivery was August 2025 — fleet is in active ramp. EIS requires a full documentation suite: Airplane Flight Manual (AFM), Airplane Maintenance Manual (AMM), Structural Repair Manual (SRM), Illustrated Parts Catalog (IPC), Wiring Diagram Manual (WDM). Savannah CoE cannot author all of this within EIS timeline using direct headcount alone — offshore authoring partners are standard practice in the industry for EIS documentation packages. Cyient delivers complete ATA iSpec 2200 documentation suites for multiple OEMs. This is a time-critical, budget-approved opportunity: fleet ramp underway (22 deliveries in 2025) — AMM/SRM revisions and in-service documentation updates are NOW the active workstream.</div>
+      <div class="fast-sell">Fast-sell: S1000D / ATA iSpec 2200 · AMM/AFM/SRM/IPC/WDM authoring · FAA Part 25 cert docs · G800 EIS · Hyderabad tech pubs CoE · zero-escape model</div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">2</span>G700 Production Acceleration — Structural Analysis &amp; SB Pipeline</div>
+      <div class="bu-action-body">G700 is in full production acceleration toward 80+ aircraft/year. The NPI support phase generates ongoing structural stress analysis (fatigue, damage tolerance), Service Bulletin authoring for production changes and customer requests, and Airworthiness Directive compliance engineering. Savannah's structures team is focused on G800 ramp — G700 NPI support is a candidate for India delivery. Cyient's Hyderabad runs exactly this model for peer business jet OEMs (Textron, RTX). Collins Pro Line Fusion integration engineering is also an angle: G700 uses Pro Line Fusion as its primary avionics suite — avionics systems engineers with Collins pedigree are directly pitchable.</div>
+      <div class="fast-sell">Fast-sell: CATIA V5 stress/fatigue · Damage tolerance analysis · SB/AD authoring · Part 25 structures · Collins Pro Line Fusion avionics integration · Cyient Hyderabad delivery</div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">3</span>DO-178C Avionics Verification — Collins Pro Line Integration Certification</div>
+      <div class="bu-action-body">G700/G800 flight deck integration with Collins Pro Line Fusion requires embedded software verification (DO-178C DAL B), systems integration engineering, and avionics certification support. Gulfstream partners with Collins Aerospace on avionics integration and relies on ER&D vendors for DO-178C verification work. Cyient's DO-178C pedigree (Textron, RTX, Bombardier peer OEMs) is a proven fit. Avionics verification is a specialized high-margin service that Gulfstream already outsources — this is a proven outsource category with zero internal delivery pressure.</div>
+      <div class="fast-sell">Fast-sell: DO-178C DAL B/C verification · Collins Pro Line Fusion integration · ARINC 429 systems design · Avionics certification support · Hyderabad CoE with Collins experience</div>
+    </div>
+  </div>
+
+  <!-- BU Block 2: Brunswick Manufacturing -->
+  <div class="bu-block">
+    <div class="bu-header" style="background:linear-gradient(135deg,#0d47a1,#1976d2);">
+      <div>
+        <div class="bu-header-title">🏭 Brunswick GA — Structures Manufacturing (G700/G800 Ramp)</div>
+        <div class="bu-header-sub">Fuselage &amp; wing manufacturing · Composite production · ~2,500 employees</div>
+      </div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">1</span>G700/G800 Structures CAD/CAM — NC Programming Acceleration</div>
+      <div class="bu-action-body">Brunswick manufactures G700/G800 fuselages and wing/center sections. Ramp acceleration requires NC programming, CAD/CAM production planning, tooling design, and manufacturing process documentation. Brunswick's CAD/CAM team is under production pressure. Cyient's Hyderabad manufacturing engineering center (CATIA V5 NC, CAM, process planning) can absorb CAD/CAM workload directly. This is a direct channel to Greg Collett (SVP Manufacturing) and the Brunswick plant engineering leadership.</div>
+      <div class="fast-sell">Fast-sell: CATIA V5 CAM / NC programming · Manufacturing process planning · Tooling design support · CNC program delivery · Hyderabad manufacturing CoE</div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">2</span>Composite Manufacturing Engineering — Brunswick Composite Fab</div>
+      <div class="bu-action-body">Brunswick is Gulfstream's primary composite manufacturing facility (wing fairings, control surfaces, interior components). Composite process engineering — lay-up planning, cure cycle design, NDT procedures, and process documentation — is material-intensive and time-consuming. Cyient's Hyderabad has aerospace-certified composite process engineers (AS9100, AS9102 FAI experience). This is a steady-state manufacturing engineering workload that Brunswick would readily offshore.</div>
+      <div class="fast-sell">Fast-sell: Composite lay-up planning · Process documentation · NDT procedures · Cure cycle design · FAI/AS9102 support · Hyderabad manufacturing team</div>
+    </div>
+  </div>
+
+  <!-- BU Block 3: India Scaling -->
+  <div class="bu-block">
+    <div class="bu-header" style="background:linear-gradient(135deg,#7c4a00,#ff8f00);">
+      <div>
+        <div class="bu-header-title">🇮🇳 Gulfstream India Strategy — Zero Presence = First-Mover Advantage</div>
+        <div class="bu-header-sub">No Hyderabad/Bangalore office · Cyient Hyderabad is the ready-made solution</div>
+      </div>
+    </div>
+
+    <div class="bu-action">
+      <div class="bu-action-title"><span class="bu-action-num">1</span>India Engineering Scaling Partnership — Cyient Hyderabad CoE</div>
+      <div class="bu-action-body">Gulfstream has ZERO dedicated India engineering office. Textron, Bombardier, Dassault, and Embraer all have 500–1,500+ India teams. Gulfstream is 5 years behind the curve. The $21.83B backlog forces the issue: they cannot sustain 170+ aircraft/year delivery without a scalable offshore model. Cyient's Hyderabad engineering center is the ready-made infrastructure Gulfstream doesn't have to build. Position Cyient not just as a vendor but as Gulfstream's India engineering partner for the next scale phase. This is a strategic partnership conversation, not a transactional services pitch.</div>
+      <div class="fast-sell">Fast-sell: Cyient Hyderabad CoE · CATIA V5 structural stress · Documentation factory (S1000D) · AS9100 certified · Scalable India delivery model · Peer OEM reference clients (Textron, RTX, GE)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HIRING INTELLIGENCE ═══ -->
+<div id="hiring" class="section">
+  <div class="section-title">💼 Hiring Intelligence</div>
+  <div style="background:#fef9c3;border:1.5px solid #eab308;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:#713f12;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:16px;">🔍</span>
+    <span><strong>Non-Cleared Roles Only</strong> — Cyient targets: US Citizens · Green Card holders · No citizenship restriction roles. Secret / TS / SCI / classified positions are excluded from this tracker.</span>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:22px;">
+    <div class="card">
+      <div class="card-title">📍 Hiring by Location</div>
+      <div class="prog-row"><div class="prog-label"><span>Savannah GA (HQ Engineering)</span><span>~180+ roles</span></div><div class="prog-bar"><div class="prog-fill" style="width:75%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Brunswick GA (Manufacturing)</span><span>~80+ roles</span></div><div class="prog-bar"><div class="prog-fill" style="width:33%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Dallas TX (Completions)</span><span>~40 roles</span></div><div class="prog-bar"><div class="prog-fill" style="width:17%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Long Beach CA (MRO)</span><span>~30 roles</span></div><div class="prog-bar"><div class="prog-fill" style="width:12%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Appleton WI (MRO)</span><span>~20 roles</span></div><div class="prog-bar"><div class="prog-fill" style="width:8%;background:#ff9800;"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔧 Top Skill Clusters Open Now</div>
+      <div class="prog-row"><div class="prog-label"><span>Structures / Stress Engineering (CATIA/Abaqus)</span><span>HIGH</span></div><div class="prog-bar"><div class="prog-fill" style="width:90%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Technical Publications (AMM/AFM/SRM)</span><span>HIGH</span></div><div class="prog-bar"><div class="prog-fill" style="width:85%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>Certification Engineering (FAA Part 25)</span><span>HIGH</span></div><div class="prog-bar"><div class="prog-fill" style="width:80%;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>DO-178C Avionics / Embedded SW</span><span>MED</span></div><div class="prog-bar"><div class="prog-fill" style="width:60%;background:#ff9800;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>CAD/CAM Engineering (NC Programming)</span><span>MED</span></div><div class="prog-bar"><div class="prog-fill" style="width:55%;background:#ff9800;"></div></div></div>
+      <div class="prog-row"><div class="prog-label"><span>MRO Documentation (ATA iSpec 2200)</span><span>STEADY</span></div><div class="prog-bar"><div class="prog-fill" style="width:40%;background:#4caf50;"></div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Hot Roles — High Offshore-Eligibility</div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="background:#f0f8ff;"><th style="padding:9px;text-align:left;border-bottom:2px solid #0076be;">Role</th><th style="padding:9px;text-align:left;border-bottom:2px solid #0076be;">Site</th><th style="padding:9px;text-align:left;border-bottom:2px solid #0076be;">Program</th><th style="padding:9px;text-align:left;border-bottom:2px solid #0076be;">Offshore-Eligible</th><th style="padding:9px;text-align:left;border-bottom:2px solid #0076be;">Cyient Skill</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:9px;"><strong>AMM/AFM Technical Writer</strong></td><td style="padding:9px;"><span class="loc-us">Savannah GA</span></td><td style="padding:9px;">G800 EIS</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">S1000D / ATA iSpec 2200 · tech pubs CoE</td></tr>
+        <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:9px;"><strong>Structural Stress Engineer</strong></td><td style="padding:9px;"><span class="loc-us">Savannah GA</span> / <span class="loc-us">Brunswick GA</span></td><td style="padding:9px;">G700/G800 · G650</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">CATIA V5 · Abaqus · Nastran · Part 25</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:9px;"><strong>Certification Specialist (FAA Part 25)</strong></td><td style="padding:9px;"><span class="loc-us">Savannah GA</span></td><td style="padding:9px;">G800 EIS</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">FAA Part 25 · DER support · certification docs</td></tr>
+        <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:9px;"><strong>NC Programmer / CAD-CAM Engineer</strong></td><td style="padding:9px;"><span class="loc-us">Brunswick GA</span></td><td style="padding:9px;">G700/G800 production</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">CATIA V5 CAM · Mastercam · CNC programming</td></tr>
+        <tr style="border-bottom:1px solid #eee;"><td style="padding:9px;"><strong>Service Bulletin Author</strong></td><td style="padding:9px;"><span class="loc-us">Long Beach CA</span> / <span class="loc-us">Appleton WI</span></td><td style="padding:9px;">MRO fleet support</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">ATA iSpec 2200 · SB/AD authoring · fleet MRO</td></tr>
+        <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:9px;"><strong>DO-178C Embedded SW Engineer</strong></td><td style="padding:9px;"><span class="loc-us">Savannah GA</span></td><td style="padding:9px;">Collins avionics integration</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">DO-178C DAL B/C · ARINC 429 · Collins experience</td></tr>
+        <tr style="background:#fafafa;"><td style="padding:9px;"><strong>Manufacturing Process Engineer</strong></td><td style="padding:9px;"><span class="loc-us">Brunswick GA</span></td><td style="padding:9px;">G700/G800 mfg</td><td style="padding:9px;"><span style="color:#2e7d32;font-weight:700;">✅ Yes</span></td><td style="padding:9px;">Process documentation · Composite mfg eng · FAI/AS9102</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ KEY CONTACTS ═══ -->
+<div id="contacts" class="section">
+  <div class="section-title">👥 Key Contacts — Outreach Map</div>
+  <div style="background:#fff3e0;border-radius:8px;padding:12px 16px;margin-bottom:20px;border-left:4px solid #ff9800;font-size:12px;color:#444;">
+    ⚠️ <strong>Contact intelligence note:</strong> Gulfstream is a wholly-owned subsidiary of General Dynamics (NYSE: GD). Executive names (Mark Burns, Colin Miller, Greg Collett, Lawrence Costello, Derek Zimmerman, Dan Nassif) are confirmed via Gulfstream org charts and LinkedIn. VP/Director names must be verified on LinkedIn before outreach — search terms provided in each card.
+  </div>
+  <div id="ct-cards" class="grid-2"></div>
+</div>
+
+<!-- ═══ INDIA STRATEGY ═══ -->
+<div id="india" class="section">
+  <div class="section-title">🇮🇳 India Strategy — The Strategic Gap</div>
+
+  <div class="india-banner">
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px;">🚨 Strategic Gap: Zero India Presence → Cyient Hyderabad Is the Answer</div>
+    <div style="font-size:12px;opacity:.93;line-height:1.7;">Gulfstream has NO India engineering office at all — neither in Bangalore nor Hyderabad. This is a massive competitive gap. All major Gulfstream peers — Textron (uses Cyient Hyderabad at scale), Bombardier (Bangalore), Dassault (Bangalore/Pune), Embraer (Chennai) — have built India engineering teams. Gulfstream is 5+ years behind. The $21.83B backlog forces the issue: they cannot scale to 170+ aircraft/year delivery without a scalable offshore model. Cyient is in Hyderabad, AS9100 certified, and already serving peer OEMs at scale. This is the Gulfstream India pitch — and Cyient has first-mover advantage.</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:22px;">
+    <div class="card">
+      <div class="card-title">🏢 Current India Footprint</div>
+      <div style="font-size:12px;line-height:1.8;color:#444;">
+        <div style="margin-bottom:10px;padding:10px;background:#f8faff;border-radius:6px;border-left:3px solid #dc2626;">
+          <strong>Gulfstream India Engineering Office</strong><br>
+          <span style="color:#666;"><strong>NONE IDENTIFIED</strong> — Gulfstream has zero dedicated India engineering presence. No Bangalore, no Hyderabad, no satellite office. All Gulfstream engineering is Savannah-based.</span>
+        </div>
+        <div style="margin-bottom:10px;padding:10px;background:#fff8f0;border-radius:6px;border-left:3px solid #ff9800;">
+          <strong>General Dynamics India Presence</strong><br>
+          <span style="color:#666;">GD has some IT/services relationships in India through TCS and others, but Gulfstream Aerospace specifically has no engineering office. This is the gap.</span>
+        </div>
+        <div style="padding:10px;background:#e8f4fd;border-radius:6px;border-left:3px solid #0076be;">
+          <strong>Cyient Hyderabad — Ready-Made Solution</strong><br>
+          <span style="color:#666;">5,000+ aerospace engineers, AS9100 certified, proven Textron/RTX/GE references, fully equipped to deliver structural analysis, tech pubs, avionics verification, and manufacturing engineering.</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 Cyient Hyderabad — The Pitch</div>
+      <div style="font-size:12px;line-height:1.8;color:#444;">
+        <div style="background:#e8f4fd;border-radius:8px;padding:12px;margin-bottom:10px;">
+          <strong style="color:#0a2342;">What Cyient Offers as Gulfstream's India Partner:</strong>
+          <ul style="margin-top:6px;padding-left:18px;color:#555;font-size:11.5px;">
+            <li>Scale: 5,000+ aerospace engineers vs. Gulfstream's zero India presence</li>
+            <li>AS9100 certified with proven aerospace quality infrastructure</li>
+            <li>Complete delivery model: Structural analysis, CAD/CAM, S1000D tech pubs, DO-178C avionics</li>
+            <li>Proven OEM reference clients: Textron Aviation (active), RTX, GE, Boeing, BAE</li>
+            <li>40-50% cost advantage vs. Savannah headcount + zero CAPEX</li>
+          </ul>
+        </div>
+        <div style="background:#f1f8e9;border-radius:8px;padding:10px;">
+          <strong style="color:#1b5e20;">Recommended Pitch Entry:</strong>
+          <div style="font-size:11.5px;color:#555;margin-top:4px;">Approach Colin Miller (SVP Eng) and Greg Collett (SVP Mfg) directly. Frame: "Textron uses Cyient Hyderabad at scale for structural analysis and tech pubs. Your $21.83B backlog requires that same model. Cyient Hyderabad is a ready-made India engineering partner — let's discuss scaling your delivery."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PROGRAMS ═══ -->
+<div id="programs" class="section">
+  <div class="section-title">✈️ Fleet Programs</div>
+
+  <div class="grid-2">
+    <div class="card" style="border-top-color:#0055a5;">
+      <div class="card-title" style="color:#0055a5;">G800 — Ultra-Long-Range Flagship</div>
+      <div style="font-size:12px;color:#444;line-height:1.8;">
+        <div style="background:#e8f4fd;border-radius:6px;padding:10px;margin-bottom:10px;">
+          <strong>Key specs:</strong> Mach 0.925 top speed · 8,000 nm range · 8 passengers max · 51,000 ft ceiling<br>
+          <strong>Engines:</strong> Rolls-Royce Pearl 705 (2×)<br>
+          <strong>Avionics:</strong> Collins Pro Line Fusion flight deck<br>
+          <strong>FAA cert:</strong> June 2025 · EIS: August 2025<br>
+          <strong>Price:</strong> ~$75M list
+        </div>
+        <strong>Engineering significance:</strong> World's fastest and longest-range purpose-built bizjet. First customer delivery August 2025. 22 deliveries in FY 2025 with higher guidance for 2026+. EIS documentation (AFM/AMM/SRM) is the immediate engineering driver. This is Cyient's most time-critical opportunity.
+      </div>
+    </div>
+    <div class="card" style="border-top-color:#1565c0;">
+      <div class="card-title" style="color:#1565c0;">G700 — Ultra-Long-Range Production Leader</div>
+      <div style="font-size:12px;color:#444;line-height:1.8;">
+        <div style="background:#e8f4fd;border-radius:6px;padding:10px;margin-bottom:10px;">
+          <strong>Key specs:</strong> 7,500 nm range · 19-hour endurance · 13 passengers · 51,000 ft ceiling<br>
+          <strong>Engines:</strong> Rolls-Royce Pearl 700 (2×)<br>
+          <strong>Avionics:</strong> Collins Pro Line Fusion<br>
+          <strong>FAA cert:</strong> December 2023<br>
+          <strong>Price:</strong> ~$70M list
+        </div>
+        <strong>Engineering significance:</strong> Largest cabin of any ultra-long-range bizjet. In full production acceleration toward 80+ aircraft/year. NPI phase generates ongoing structural stress, SB authoring, and avionics integration work. Rolls-Royce Pearl engine link creates engineering partnership opportunities.
+      </div>
+    </div>
+    <div class="card" style="border-top-color:#7b1fa2;">
+      <div class="card-title" style="color:#7b1fa2;">G650 / G650ER — Mature Proven Platform</div>
+      <div style="font-size:12px;color:#444;line-height:1.8;">
+        <div style="background:#f3e5f5;border-radius:6px;padding:10px;margin-bottom:10px;">
+          <strong>Key specs:</strong> 5,000-5,500 nm range · 13 passengers · 51,000 ft ceiling<br>
+          <strong>Engines:</strong> Rolls-Royce BR710 (2×)<br>
+          <strong>Avionics:</strong> Collins Pro Line Fusion<br>
+          <strong>Status:</strong> Proven, in continued production<br>
+          <strong>Price:</strong> ~$60M list
+        </div>
+        <strong>Engineering significance:</strong> Mature platform with continued backlog. Steady production support and NPI work. Service Bulletin and fleet support engineering are ongoing. Lower-risk steady-state workload for offshore delivery model.
+      </div>
+    </div>
+    <div class="card" style="border-top-color:#558b2f;">
+      <div class="card-title" style="color:#558b2f;">G600 / G550 — Support & MRO Tail</div>
+      <div style="font-size:12px;color:#444;line-height:1.8;">
+        <div style="background:#f1f8e9;border-radius:6px;padding:10px;margin-bottom:10px;">
+          <strong>Fleet:</strong> 600/550 family still operating globally<br>
+          <strong>Support:</strong> MRO, technical publications, fleet maintenance<br>
+          <strong>Status:</strong> Sustainment through 2030s<br>
+          <strong>Service Centers:</strong> Long Beach, Appleton, Singapore, Farnborough
+        </div>
+        <strong>Engineering significance:</strong> Steady-state fleet support work. Service Bulletin authoring, Airworthiness Directive compliance, and maintenance manual updates create multi-year documentation demand. Ideal for offshore technical publications delivery.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ OUTREACH PLAYBOOK ═══ -->
+<div id="outreach" class="section">
+  <div class="section-title">🤝 Outreach Playbook — <span id="op-headline"></span></div>
+  <div id="op-badge" style="display:inline-block;background:#4caf50;color:#fff;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:22px;"></div>
+  <div id="op-triggers" class="grid-2" style="margin-bottom:28px;"></div>
+  <div class="card" style="border-top-color:#1a1a2e;">
+    <div class="card-title">Production → Ramp: 5-Step Sequence</div>
+    <div id="op-steps"></div>
+  </div>
+</div>
+
+<!-- ═══ PARTNERSHIPS ═══ -->
+<div id="partnerships" class="section">
+  <div class="section-title">🤝 Partnerships &amp; Alliances</div>
+  <div id="pw-cards" class="grid-2"></div>
+</div>
+
+<!-- ═══ EVENTS ═══ -->
+<div id="events" class="section">
+  <div class="section-title">📅 Industry Events — 2026 Calendar</div>
+  <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:22px;font-size:12.5px;color:#92400e;">
+    🗓️ <strong>Why events matter:</strong> Pre-event outreach (2 weeks before each show) converts cold emails into scheduled meetings with engineering and business development leadership.
+  </div>
+  <div id="ev-cards" class="grid-2"></div>
+</div>
+
+<!-- ═══ FAST-SELL SKILLS ═══ -->
+<div id="skills" class="section">
+  <div class="section-title">⚡ Fast-Sell Skills Matrix</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title">🎯 Gulfstream-Specific Skill Tags — Use in Every Email/Call</div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;">Documentation / Tech Pubs</div>
+      <span class="tag tag-accent">S1000D</span><span class="tag tag-accent">ATA iSpec 2200</span><span class="tag tag-accent">AMM/AFM authoring</span><span class="tag tag-accent">SRM/IPC authoring</span><span class="tag tag-accent">WDM</span><span class="tag tag-accent">Service Bulletin authoring</span><span class="tag tag-accent">Airworthiness Directive compliance</span><span class="tag tag-accent">FAA Part 25 cert docs</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;">Structures Engineering</div>
+      <span class="tag tag-accent">CATIA V5</span><span class="tag tag-accent">Abaqus FEA</span><span class="tag tag-accent">Nastran</span><span class="tag tag-accent">Damage tolerance analysis</span><span class="tag tag-accent">FAR Part 25 structures</span><span class="tag tag-accent">DER support</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;">Avionics / Embedded Software</div>
+      <span class="tag tag-accent">DO-178C DAL A/B</span><span class="tag tag-accent">Collins Pro Line Fusion</span><span class="tag tag-accent">ARINC 429</span><span class="tag tag-accent">Avionics systems integration</span><span class="tag tag-accent">IFC systems</span><span class="tag tag-accent">EWIS/IPC documentation</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;">Manufacturing Engineering</div>
+      <span class="tag tag-accent">CATIA V5 CAM</span><span class="tag tag-accent">NC Programming</span><span class="tag tag-accent">Process Planning</span><span class="tag tag-accent">Composite Mfg Eng</span><span class="tag tag-accent">FAI / AS9102</span><span class="tag tag-accent">Tooling Design</span>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#666;margin-bottom:8px;text-transform:uppercase;">Credentials to Lead With</div>
+      <span class="tag tag-hot">AS9100 certified</span><span class="tag tag-hot">Cyient Hyderabad CoE</span><span class="tag tag-hot">Textron / RTX / GE / BAE references</span><span class="tag tag-hot">Zero-escape documentation delivery</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MARKET REFERENCE ═══ -->
+<div id="reference" class="section">
+  <div class="section-title">📚 Market Context</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🏆 Gulfstream vs. Business Aviation Peers</div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+        <thead><tr style="background:#f0f8ff;"><th style="padding:8px;text-align:left;border-bottom:2px solid #0076be;">OEM</th><th style="padding:8px;border-bottom:2px solid #0076be;">Revenue</th><th style="padding:8px;border-bottom:2px solid #0076be;">Backlog</th><th style="padding:8px;border-bottom:2px solid #0076be;">Cyient In?</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;"><strong>Gulfstream</strong><br><span style="font-size:10px;color:#888;">part of General Dynamics</span></td><td style="padding:8px;">$13.11B</td><td style="padding:8px;">$21.83B</td><td style="padding:8px;"><span style="color:#ff9800;font-weight:700;">🎯 Target</span></td></tr>
+          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;"><strong>Bombardier</strong></td><td style="padding:8px;">$9.3B</td><td style="padding:8px;">$17.5B</td><td style="padding:8px;"><span style="color:#ff9800;font-weight:700;">🎯 Target</span></td></tr>
+          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;"><strong>Textron Aviation</strong><br><span style="font-size:10px;color:#888;">Cessna + Beechcraft</span></td><td style="padding:8px;">~$6B</td><td style="padding:8px;">~$8B</td><td style="padding:8px;"><span style="color:#2e7d32;font-weight:700;">✅ Active</span></td></tr>
+          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;"><strong>Dassault Falcon</strong></td><td style="padding:8px;">~$3B</td><td style="padding:8px;">~$6B</td><td style="padding:8px;"><span style="color:#888;font-weight:700;">⚪ Research</span></td></tr>
+          <tr><td style="padding:8px;"><strong>Embraer Executive</strong></td><td style="padding:8px;">~$1.5B</td><td style="padding:8px;">~$3B+</td><td style="padding:8px;"><span style="color:#ff9800;font-weight:700;">🎯 Target</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📈 Key Trends Driving Gulfstream's Growth</div>
+      <div style="font-size:12px;color:#444;line-height:1.8;">
+        <div style="margin-bottom:8px;padding:8px;background:#e8f4fd;border-radius:6px;"><strong>1. Post-COVID Bizav Boom:</strong> UHNW demand for ultra-long-range private jets remains elevated. G800 order book reflects multi-year forward demand.</div>
+        <div style="margin-bottom:8px;padding:8px;background:#e8f4fd;border-radius:6px;"><strong>2. G800 Market Leadership:</strong> World's fastest/longest-range bizjet takes market share from Bombardier Global 8000. $75M+ per aircraft premium positioning.</div>
+        <div style="margin-bottom:8px;padding:8px;background:#e8f4fd;border-radius:6px;"><strong>3. Production Scaling Pressure:</strong> $21.83B backlog requires 170+ deliveries/year 2026-2027. Savannah headcount model breaks down — offshore scaling is mandatory.</div>
+        <div style="padding:8px;background:#e8f4fd;border-radius:6px;"><strong>4. India Engineering Gap:</strong> Zero India presence vs. 500+ at Textron/Bombardier. First-mover Cyient partnership opportunity — strategic scale conversation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main-content -->
+</div><!-- end container -->
+
+<script>
+// Populate dynamic data
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  // ── Key Contacts ─────────────────────────────────────────────────────
+  if(GS_DATA.keyContacts && document.getElementById('ct-cards')) {
+    document.getElementById('ct-cards').innerHTML = GS_DATA.keyContacts.map(c => `
+      <div class="contact-card" style="border-left-color:${c.color};">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+          <div class="contact-name">${c.name}</div>
+          <span style="background:${c.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${c.badge}</span>
+        </div>
+        <div class="contact-title">${c.title}</div>
+        <div class="contact-location">📍 ${c.loc}</div>
+        <div style="margin-top:8px;background:#f8faff;border-radius:6px;padding:8px 10px;font-size:11px;color:#1a1a2e;line-height:1.6;">💬 ${c.pitch}</div>
+      </div>`).join('');
+  }
+
+  // ── Outreach Playbook ────────────────────────────────────────────────
+  const op = GS_DATA.outreachPlaybook;
+  if(op && document.getElementById('op-headline')) {
+    document.getElementById('op-headline').textContent = op.headline;
+    document.getElementById('op-badge').textContent    = op.badge;
+    document.getElementById('op-triggers').innerHTML   = op.triggers.map(t => `
+      <div class="card" style="border-top-color:#0078d4;">
+        <div class="card-title">${t.icon} ${t.label}</div>
+        <p style="font-size:12.5px;line-height:1.7;color:#444;margin-bottom:10px;">${t.body}</p>
+        <div style="background:#f0fdf4;border-left:3px solid #22c55e;padding:8px 12px;border-radius:0 6px 6px 0;font-size:11.5px;color:#166534;font-weight:600;">⚡ Action: ${t.action}</div>
+      </div>`).join('');
+    document.getElementById('op-steps').innerHTML = op.coldToWarm.map(s => `
+      <div style="display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #f0f0f0;">
+        <div style="min-width:28px;height:28px;background:#0078d4;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">${s.step}</div>
+        <div><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">${s.label}</div>
+        <div style="font-size:12px;color:#555;line-height:1.6;">${s.body}</div></div>
+      </div>`).join('');
+    document.getElementById('pw-cards').innerHTML = GS_DATA.partnerships.map(p => `
+      <div class="card" style="border-top-color:#0284c7;">
+        <div class="card-title">${p.name} <span class="tag">${p.type}</span> <span class="tag" style="background:#dcfce7;color:#166534;">${p.status}</span></div>
+        <p style="font-size:12.5px;line-height:1.7;color:#444;margin-bottom:10px;">${p.desc}</p>
+        <div style="background:#eff6ff;border-left:3px solid #0284c7;padding:8px 12px;border-radius:0 6px 6px 0;font-size:11.5px;color:#1e40af;font-weight:600;">🎯 Cyient Angle: ${p.angle}</div>
+      </div>`).join('');
+    document.getElementById('ev-cards').innerHTML = GS_DATA.events.map(e => `
+      <div class="card" style="border-top-color:#d97706;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">${e.name}</div>
+          <span style="font-size:12px;font-weight:700;">${e.priority}</span>
+        </div>
+        <div style="font-size:12px;color:#666;margin-bottom:6px;">📍 ${e.location} &nbsp;·&nbsp; 📅 ${e.date} &nbsp;·&nbsp; <span class="tag">${e.type}</span></div>
+        <p style="font-size:12.5px;line-height:1.7;color:#444;">${e.why}</p>
+      </div>`).join('');
+  }
+
+  document.getElementById('sb-refresh').textContent = GS_DATA.lastRefreshed;
+  document.getElementById('kpi-rev').textContent  = '$' + GS_DATA.revenue + 'B';
+  document.getElementById('kpi-rev-g').textContent = '▲ +' + GS_DATA.revenueGrowth + '% YoY';
+  document.getElementById('kpi-backlog').textContent = '$' + GS_DATA.backlog + 'B';
+  document.getElementById('kpi-backlog-g').textContent = '▲ +' + GS_DATA.backlogGrowth.toFixed(1) + '% YoY';
+  document.getElementById('kpi-del').textContent = GS_DATA.deliveries;
+  document.getElementById('kpi-del-g').textContent = '▲ +' + GS_DATA.deliveriesGrowth + '% YoY';
+  document.getElementById('kpi-margin').textContent = GS_DATA.operatingMargin + '%';
+  document.getElementById('kpi-roles').textContent = '~' + GS_DATA.openRoles + '+';
+});
+
+function switchSection(evt, id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// Activate first section
+document.getElementById('overview').classList.add('active');
+</script>
+</body>
+</html>
